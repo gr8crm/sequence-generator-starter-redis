@@ -17,8 +17,6 @@
 package org.gr8crm.autoconfiguration.sequence.redis;
 
 import org.gr8crm.sequence.SequenceGenerator;
-import org.gr8crm.sequence.SequenceGeneratorProperties;
-import org.gr8crm.sequence.SequenceInitializer;
 import org.gr8crm.sequence.redis.RedisSequenceGenerator;
 import org.gr8crm.sequence.redis.SequenceGeneratorRedisProperties;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,15 +37,12 @@ import redis.clients.jedis.JedisPoolConfig;
 public class SequenceGeneratorRedisAutoConfiguration {
 
     @Autowired
-    private SequenceGeneratorProperties properties;
-
-    @Autowired
     private SequenceGeneratorRedisProperties config;
 
     @Bean
     @ConditionalOnMissingBean
-    public SequenceGenerator sequenceGenerator(SequenceInitializer sequenceInitializer) {
-        return new RedisSequenceGenerator(jedisPool(), sequenceInitializer, config);
+    public SequenceGenerator sequenceGenerator() {
+        return new RedisSequenceGenerator(jedisPool(), config);
     }
 
     @Bean

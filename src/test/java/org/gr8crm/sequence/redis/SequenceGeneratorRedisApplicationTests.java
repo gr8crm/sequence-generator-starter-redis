@@ -16,11 +16,9 @@
 
 package org.gr8crm.sequence.redis;
 
-import org.gr8crm.sequence.SequenceGeneratorProperties;
-import org.gr8crm.sequence.SequenceGeneratorService;
-import org.gr8crm.sequence.SimpleSequenceInitializer;
-import org.junit.After;
-import org.junit.Before;
+import org.gr8crm.sequence.SequenceConfiguration;
+import org.gr8crm.sequence.SequenceGenerator;
+import org.gr8crm.sequence.SimpleSequenceGenerator;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,188 +41,207 @@ public class SequenceGeneratorRedisApplicationTests {
     private ApplicationContext context;
 
     @Autowired
-    private SequenceGeneratorService sequenceGeneratorService;
-
-    @Autowired
-    private SequenceGeneratorProperties properties;
-
-    @Before
-    public void setup() {
-        properties.setDefault(false, "%d", 1, 1);
-    }
-
-    @After
-    public void cleanup() {
-        sequenceGeneratorService.shutdown();
-    }
+    private SequenceGenerator sequenceGenerator;
 
     @Test
     public void contextLoads() {
         assertNotNull(context);
-        assertNotNull(sequenceGeneratorService);
-        context.getBean(SimpleSequenceInitializer.class);
-        context.getBean(RedisSequenceGenerator.class);
-    }
-
-    @Test
-    public void defaultConfiguration() {
-        assertFalse(properties.getDefault().isCreate());
-        assertEquals("%d", properties.getDefault().getFormat());
-        assertEquals(1, properties.getDefault().getStart());
-        assertEquals(1, properties.getDefault().getIncrement());
-    }
-
-    @Test
-    public void customConfiguration() {
-        assertTrue(properties.getSequence("custom").isCreate());
-        assertEquals("%04d", properties.getSequence("custom").getFormat());
-        assertEquals(1000, properties.getSequence("custom").getStart());
-        assertEquals(10, properties.getSequence("custom").getIncrement());
+        assertNotNull(sequenceGenerator);
+        assertTrue(sequenceGenerator instanceof RedisSequenceGenerator);
     }
 
     @Test
     public void nonExistingSequence() {
         try {
-            sequenceGeneratorService.nextNumber("notfound", "foo", 0);
+            sequenceGenerator.nextNumber("test", 0, "notfound", "foo");
             fail("IllegalArgumentException expected here");
         } catch (IllegalArgumentException e) {
-            assertEquals("No such sequence: 0/notfound/foo", e.getMessage());
+            assertEquals("No such sequence: test/0/notfound/foo", e.getMessage());
         }
     }
 
     @Test
     public void singleSequence() {
+        // given:
+        SequenceConfiguration config = SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("single")
+                .withStart(1)
+                .build();
+
         // when:
-        sequenceGeneratorService.initialize("single");
+        sequenceGenerator.create(config);
 
         // then:
-        assertEquals("1", sequenceGeneratorService.nextNumber("single"));
-        assertEquals("2", sequenceGeneratorService.nextNumber("single"));
-        assertEquals("3", sequenceGeneratorService.nextNumber("single"));
+        assertEquals("1", sequenceGenerator.nextNumber("test", 1, "single", null));
+        assertEquals("2", sequenceGenerator.nextNumber("test", 1, "single", null));
+        assertEquals("3", sequenceGenerator.nextNumber("test", 1, "single", null));
     }
 
     @Test
     public void groupedSequence() {
         // given:
-        sequenceGeneratorService.initialize("grouped", "A");
-        sequenceGeneratorService.initialize("grouped", "B");
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("grouped")
+                .withGroup("A")
+                .withStart(1)
+                .build());
 
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("grouped")
+                .withGroup("B")
+                .withStart(1)
+                .build());
         // when/then:
         try {
-            sequenceGeneratorService.nextNumber("grouped", "C");
+            sequenceGenerator.nextNumber("test", 1, "grouped", "C");
             fail("IllegalArgumentException expected here");
         } catch (IllegalArgumentException e) {
-            assertEquals("No such sequence: 0/grouped/C", e.getMessage());
+            assertEquals("No such sequence: test/1/grouped/C", e.getMessage());
         }
 
         // and:
-        assertEquals("1", sequenceGeneratorService.nextNumber("grouped", "A"));
-        assertEquals("2", sequenceGeneratorService.nextNumber("grouped", "A"));
-        assertEquals("3", sequenceGeneratorService.nextNumber("grouped", "A"));
+        assertEquals("1", sequenceGenerator.nextNumber("test", 1, "grouped", "A"));
+        assertEquals("2", sequenceGenerator.nextNumber("test", 1, "grouped", "A"));
+        assertEquals("3", sequenceGenerator.nextNumber("test", 1, "grouped", "A"));
 
         // and:
-        assertEquals("1", sequenceGeneratorService.nextNumber("grouped", "B"));
-        assertEquals("2", sequenceGeneratorService.nextNumber("grouped", "B"));
-        assertEquals("3", sequenceGeneratorService.nextNumber("grouped", "B"));
+        assertEquals("1", sequenceGenerator.nextNumber("test", 1, "grouped", "B"));
+        assertEquals("2", sequenceGenerator.nextNumber("test", 1, "grouped", "B"));
+        assertEquals("3", sequenceGenerator.nextNumber("test", 1, "grouped", "B"));
 
         // and:
-        assertEquals("4", sequenceGeneratorService.nextNumber("grouped", "A"));
-        assertEquals("4", sequenceGeneratorService.nextNumber("grouped", "B"));
+        assertEquals("4", sequenceGenerator.nextNumber("test", 1, "grouped", "A"));
+        assertEquals("4", sequenceGenerator.nextNumber("test", 1, "grouped", "B"));
     }
 
     @Test
     public void multiTenantSequences() {
-        // when:
-        sequenceGeneratorService.initialize("test", "group", 1);
-        sequenceGeneratorService.initialize("test", "group", 2);
-        sequenceGeneratorService.initialize("test", "group", 3);
+        // given:
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("tenant")
+                .withStart(1)
+                .build());
+
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(2)
+                .withName("tenant")
+                .withStart(1)
+                .build());
+
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(3)
+                .withName("tenant")
+                .withStart(1)
+                .build());
 
         // then:
-        assertEquals("1", sequenceGeneratorService.nextNumber("test", "group", 1));
-        assertEquals("2", sequenceGeneratorService.nextNumber("test", "group", 1));
-        assertEquals("3", sequenceGeneratorService.nextNumber("test", "group", 1));
+        assertEquals("1", sequenceGenerator.nextNumber("test", 1, "tenant", null));
+        assertEquals("2", sequenceGenerator.nextNumber("test", 1, "tenant", null));
+        assertEquals("3", sequenceGenerator.nextNumber("test", 1, "tenant", null));
 
         // and:
-        assertEquals("1", sequenceGeneratorService.nextNumber("test", "group", 2));
-        assertEquals("2", sequenceGeneratorService.nextNumber("test", "group", 2));
-        assertEquals("3", sequenceGeneratorService.nextNumber("test", "group", 2));
+        assertEquals("1", sequenceGenerator.nextNumber("test", 2, "tenant", null));
+        assertEquals("2", sequenceGenerator.nextNumber("test", 2, "tenant", null));
+        assertEquals("3", sequenceGenerator.nextNumber("test", 2, "tenant", null));
 
         // and:
-        assertEquals("1", sequenceGeneratorService.nextNumber("test", "group", 3));
-        assertEquals("2", sequenceGeneratorService.nextNumber("test", "group", 3));
-        assertEquals("3", sequenceGeneratorService.nextNumber("test", "group", 3));
+        assertEquals("1", sequenceGenerator.nextNumber("test", 3, "tenant", null));
+        assertEquals("2", sequenceGenerator.nextNumber("test", 3, "tenant", null));
+        assertEquals("3", sequenceGenerator.nextNumber("test", 3, "tenant", null));
 
         // and:
-        assertEquals("4", sequenceGeneratorService.nextNumber("test", "group", 1));
-        assertEquals("4", sequenceGeneratorService.nextNumber("test", "group", 2));
-        assertEquals("4", sequenceGeneratorService.nextNumber("test", "group", 3));
+        assertEquals("4", sequenceGenerator.nextNumber("test", 1, "tenant", null));
+        assertEquals("4", sequenceGenerator.nextNumber("test", 2, "tenant", null));
+        assertEquals("4", sequenceGenerator.nextNumber("test", 3, "tenant", null));
     }
 
     @Test
     public void leftPaddedFormat() {
-        // given:
-        properties.setSequence("test", "pad", false, "%04d", 1, 1);
-
         // when:
-        sequenceGeneratorService.initialize("test", "pad");
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("pad")
+                .withStart(1)
+                .withFormat("%04d")
+                .build());
 
         // then:
-        assertEquals("0001", sequenceGeneratorService.nextNumber("test", "pad"));
-        assertEquals("0002", sequenceGeneratorService.nextNumber("test", "pad"));
-        assertEquals("0003", sequenceGeneratorService.nextNumber("test", "pad"));
+        assertEquals("0001", sequenceGenerator.nextNumber("test", 1, "pad", null));
+        assertEquals("0002", sequenceGenerator.nextNumber("test", 1, "pad", null));
+        assertEquals("0003", sequenceGenerator.nextNumber("test", 1, "pad", null));
     }
 
     @Test
     public void startAt0() {
-        // given:
-        properties.setSequence("test", "zero", false, "%d", 0, 1);
-
         // when:
-        sequenceGeneratorService.initialize("test", "zero");
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("zero")
+                .withStart(0)
+                .build());
 
         // then:
-        assertEquals("0", sequenceGeneratorService.nextNumber("test", "zero"));
-        assertEquals("1", sequenceGeneratorService.nextNumber("test", "zero"));
-        assertEquals("2", sequenceGeneratorService.nextNumber("test", "zero"));
+        assertEquals("0", sequenceGenerator.nextNumber("test", 1, "zero", null));
+        assertEquals("1", sequenceGenerator.nextNumber("test", 1, "zero", null));
+        assertEquals("2", sequenceGenerator.nextNumber("test", 1, "zero", null));
     }
 
     @Test
     public void startAt1000() {
-        // given:
-        properties.setSequence("test", "K", false, "%d", 1000, 1);
-
         // when:
-        sequenceGeneratorService.initialize("test", "K");
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("K")
+                .withStart(1000)
+                .build());
 
         // then:
-        assertEquals("1000", sequenceGeneratorService.nextNumber("test", "K"));
-        assertEquals("1001", sequenceGeneratorService.nextNumber("test", "K"));
-        assertEquals("1002", sequenceGeneratorService.nextNumber("test", "K"));
+        assertEquals("1000", sequenceGenerator.nextNumber("test", 1, "K", null));
+        assertEquals("1001", sequenceGenerator.nextNumber("test", 1, "K", null));
+        assertEquals("1002", sequenceGenerator.nextNumber("test", 1, "K", null));
     }
 
     @Test
     public void mizedRawAndFormattedNumbers() {
-        // given:
-        properties.setSequence("test", "mix", false, "%d", 10000, 1);
-
         // when:
-        sequenceGeneratorService.initialize("test", "mix");
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("mix")
+                .withStart(10000)
+                .build());
 
         // then:
-        assertEquals(10000, sequenceGeneratorService.nextNumberLong("test", "mix"));
-        assertEquals("10001", sequenceGeneratorService.nextNumber("test", "mix"));
-        assertEquals(10002, sequenceGeneratorService.nextNumberLong("test", "mix"));
-        assertEquals("10003", sequenceGeneratorService.nextNumber("test", "mix"));
+        assertEquals(10000, sequenceGenerator.nextNumberLong("test", 1, "mix", null));
+        assertEquals("10001", sequenceGenerator.nextNumber("test", 1, "mix", null));
+        assertEquals(10002, sequenceGenerator.nextNumberLong("test", 1, "mix", null));
+        assertEquals("10003", sequenceGenerator.nextNumber("test", 1, "mix", null));
     }
 
     @Test
     public void zeroIncrement() {
-        // given:
-        properties.setSequence("test", "stuck", false, "%d", 1, 0);
-
-        // when:
+        // expect:
         try {
-            sequenceGeneratorService.initialize("test", "stuck");
+            sequenceGenerator.create(SequenceConfiguration.builder()
+                    .withApp("test")
+                    .withTenant(1)
+                    .withName("stuck")
+                    .withStart(1)
+                    .withIncrement(0)
+                    .build());
             fail("IllegalArgumentException expected here");
         } catch (IllegalArgumentException e) {
             assertEquals("increment must be non-zero", e.getMessage());
@@ -234,37 +251,44 @@ public class SequenceGeneratorRedisApplicationTests {
     @Test
     public void performance() {
         // given:
-        properties.setSequence("test", "perf", false, "%d", 0, 1);
-        sequenceGeneratorService.initialize("test", "perf");
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("perf")
+                .build());
 
         // when:
         long startTime = System.currentTimeMillis();
         for (int i = 0; i < 10000; i++) {
-            sequenceGeneratorService.nextNumber("test", "perf");
+            sequenceGenerator.nextNumber("test", 1, "perf", null);
         }
         System.out.println("100000 calls in " + (System.currentTimeMillis() - startTime) + " ms");
 
         // then:
-        assertEquals(10000, sequenceGeneratorService.status("test", "perf").getNumber());
+        assertEquals(10000, sequenceGenerator.status("test", 1, "perf", null).getNumber());
     }
 
     @Test
     public void multiThreading() throws Exception {
         // given:
-        sequenceGeneratorService.initialize("test", "threads");
+        sequenceGenerator.create(SequenceConfiguration.builder()
+                .withApp("test")
+                .withTenant(1)
+                .withName("threads")
+                .build());
         int cores = Runtime.getRuntime().availableProcessors();
-        int numberOfThreads = cores * 2;
+        int numberOfThreads = cores * 4;
         int numberOfRequests = 10000;
         final Set<String> numbers = ConcurrentHashMap.newKeySet();
         final List<Thread> threads = new ArrayList<>(numberOfThreads);
 
-        System.out.println("Using " + numberOfThreads + " threads that do " + numberOfRequests + " requests each...");
+        System.out.println("Using " + numberOfThreads + " threads to do " + numberOfRequests + " requests each...");
 
         // when:
         for (int i = 0; i < numberOfThreads; i++) {
             Thread t = new Thread(() -> {
                 for (int n = 0; n < numberOfRequests; n++) {
-                    numbers.add(sequenceGeneratorService.nextNumber("test", "threads"));
+                    numbers.add(sequenceGenerator.nextNumber("test", 1, "threads", null));
                 }
             });
             threads.add(t);

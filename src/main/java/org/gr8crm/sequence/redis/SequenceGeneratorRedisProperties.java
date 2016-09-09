@@ -3,68 +3,57 @@ package org.gr8crm.sequence.redis;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Created by goran on 2016-09-08.
+ * Properties for the redis sequence generator.
  */
 @ConfigurationProperties(
-    prefix = "sequence-generator.redis"
+        prefix = "sequence-generator.redis"
 )
 public class SequenceGeneratorRedisProperties {
-/*
-    private Redis redis;
 
-    public Redis getRedis() {
-        return redis;
+    private String host = "localhost";
+    private int port = 6379;
+    private int timeout = 30000;
+    private int database;
+    private String password;
+
+    public String getHost() {
+        return host;
     }
 
-    public void setRedis(Redis redis) {
-        this.redis = redis;
+    public void setHost(String host) {
+        this.host = host;
     }
 
-    public static class Redis {*/
-        private String host = "localhost";
-        private int port = 6379;
-        private int timeout = 30000;
-        private int database;
-        private String password;
+    public int getPort() {
+        return port;
+    }
 
-        public String getHost() {
-            return host;
-        }
+    public void setPort(int port) {
+        this.port = port;
+    }
 
-        public void setHost(String host) {
-            this.host = host;
-        }
+    public int getTimeout() {
+        return timeout;
+    }
 
-        public int getPort() {
-            return port;
-        }
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
 
-        public void setPort(int port) {
-            this.port = port;
-        }
+    public int getDatabase() {
+        return database;
+    }
 
-        public int getTimeout() {
-            return timeout;
-        }
+    public void setDatabase(int database) {
+        this.database = database;
+    }
 
-        public void setTimeout(int timeout) {
-            this.timeout = timeout;
-        }
+    public String getPassword() {
+        return password;
+    }
 
-        public int getDatabase() {
-            return database;
-        }
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-        public void setDatabase(int database) {
-            this.database = database;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-    //}
 }
