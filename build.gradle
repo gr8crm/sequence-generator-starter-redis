@@ -1,0 +1,58 @@
+buildscript {
+	ext {
+		springBootVersion = '1.4.0.RELEASE'
+	}
+	repositories {
+        mavenCentral()
+		maven { url 'http://repo.spring.io/plugins-release' }
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+		classpath("org.springframework.build.gradle:propdeps-plugin:0.0.7")
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'eclipse'
+apply plugin: 'spring-boot'
+
+apply plugin: 'propdeps'
+apply plugin: 'propdeps-maven'
+apply plugin: 'propdeps-idea'
+apply plugin: 'propdeps-eclipse'
+
+version "0.0.1-SNAPSHOT"
+group "org.gr8crm.sequence"
+
+jar {
+	baseName = 'sequence-generator-starter-redis'
+	version = project.version
+	exclude('**/SequenceGeneratorTestApplication**')
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenLocal()
+	mavenCentral()
+}
+
+
+dependencies {
+	compile "org.gr8crm.sequence:sequence-generator-starter:0.0.1-SNAPSHOT"
+    compile "redis.clients:jedis:2.9.0"
+	//compile "org.springframework.boot:spring-boot-starter-data-redis"
+    testCompile "org.springframework.boot:spring-boot-starter-test"
+	optional("org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}")
+}
+
+compileJava.dependsOn(processResources)
+
+eclipse {
+	classpath {
+		 containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
+		 containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8'
+	}
+}

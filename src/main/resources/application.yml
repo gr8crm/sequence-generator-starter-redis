@@ -1,0 +1,26 @@
+---
+sequence-generator:
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 10000
+  sequences:
+    default:
+      create: false
+      start: 0
+      increment: 1
+      format: "%d"
+    custom:
+      create: true
+      start: 1000
+      increment: 10
+      format: "%04d"
+    invoice:
+      create: true
+      start: 1
+      format: "{yyyy}-%03d"
+      groups:
+        F:
+          format: "F-%04d"
+        D:
+          format: "D-%04d"

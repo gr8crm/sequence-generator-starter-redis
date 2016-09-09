@@ -1,0 +1,16 @@
+# Sequence Generator Starter Redis
+
+This repository contains the starter dependency for sequence generator functionality
+in Spring Boot projects that uses Redis for sequence generating and persistence.
+
+See https://github.com/gr8crm/sequence-generator-starter for more information.
+
+== Dependencies
+
+[source,groovy]
+.build.gradle
+----
+dependencies {
+    compile "org.gr8crm.sequence:sequence-generator-starter-redis:0.0.1-SNAPSHOT"
+}
+----
